@@ -32,34 +32,38 @@ proc get_ip_prop {drv_handle pram} {
 }
 
 proc inc_os_prop {drv_handle os_conf_dev_var var_name conf_prop} {
-    set ip_check "False"
+    set ip [get_cells -hier $drv_handle]
+    set ip_drv [get_property NAME $drv_handle]
+    set var_name_drv "${var_name}_${ip_drv}"
+
     set os_ip [get_property ${os_conf_dev_var} [get_os]]
+    set os_ip_drv "none"
     if {![string match -nocase "" $os_ip]} {
-        set os_ip [get_property ${os_conf_dev_var} [get_os]]
-        set ip_check "True"
+        foreach drv [get_drivers] {
+            set drv_inst_name [get_cells -hier $drv]
+            if {[string match -nocase $drv_inst_name $os_ip]} {
+                set os_ip_drv [get_property NAME $drv]
+            }
+        }
+
+        if {[string match -nocase $os_ip $ip]} {
+            set_property ${conf_prop} 0 $drv_handle
+            return
+        }
     }
 
-    set count [hsi::utils::get_os_parameter_value $var_name]
+    set count [hsi::utils::get_os_parameter_value $var_name_drv]
     if {[llength $count] == 0} {
-        if {[string match -nocase "True" $ip_check]} {
+        if {[string match -nocase $os_ip_drv $ip_drv]} {
             set count 1
         } else {
             set count 0
         }
     }
 
-    if {[string match -nocase "True" $ip_check]} {
-        set ip [get_cells -hier $drv_handle]
-        if {[string match -nocase $os_ip $ip]} {
-            set ip_type [get_property IP_NAME $ip]
-            set_property ${conf_prop} 0 $drv_handle
-            return
-        }
-    }
-
     set_property $conf_prop $count $drv_handle
     incr count
-    ::hsi::utils::set_os_parameter_value $var_name $count
+    ::hsi::utils::set_os_parameter_value $var_name_drv $count
 }
 
 proc gen_count_prop {drv_handle data_dict} {
